@@ -14,6 +14,7 @@ import '@/App.css';
 
 const STORAGE_KEY = 'control-lab-simulator/v1';
 const WIFI_STORAGE_KEY = 'control-lab-simulator/wifi/v1';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -298,20 +299,37 @@ function App() {
   }, [components, wires, simResult.energizedWires]);
 
   // ---- Wi-Fi relay HTTP call ----
-  // Triggers HTTP GET to the standalone Wi-Fi relay module (no Arduino).
-  // baseUrl & paths are configurable from the إعدادات الواي فاي modal.
-  // Replace {channel} with the relay channel number (1..3).
+  // Triggers the Wi-Fi relay module (ESP8266 + 3-channel relay, no Arduino main board).
+  // When the simulator page is loaded over HTTPS, browsers block direct calls to the
+  // ESP8266 (HTTP) due to "Mixed Content". We solve this by routing through our backend
+  // proxy `/api/wifi-relay/forward` which runs on the same HTTPS origin and forwards
+  // an HTTP request to the relay module on the local network.
+  // When loaded over HTTP (local dev), we call the relay module directly with no-cors mode.
   const sendRelayCommand = useCallback((channel, on) => {
     const cfg = wifiConfigRef.current;
     if (!cfg.enabled) return;
     const path = (on ? cfg.onPath : cfg.offPath).replace('{channel}', String(channel));
-    const url = `${cfg.baseUrl}${path}`;
-    // The standalone Wi-Fi relay module is expected to expose HTTP endpoints
-    // such as /relay/on/1 and /relay/off/1. mode 'no-cors' avoids CORS errors
-    // when communicating directly with the module on the local network.
-    fetch(url, { method: 'GET', mode: 'no-cors' })
-      .then(() => setWifiStatus('connected'))
-      .catch(() => setWifiStatus('error'));
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+    const handleOk = () => setWifiStatus('connected');
+    const handleErr = () => setWifiStatus('error');
+
+    if (isHttps) {
+      // Route via backend proxy to avoid mixed-content blocking.
+      fetch(`${BACKEND_URL}/api/wifi-relay/forward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base_url: cfg.baseUrl, path }),
+      })
+        .then((r) => r.ok ? r.json() : Promise.reject())
+        .then((j) => { if (j.status === 'ok') handleOk(); else handleErr(); })
+        .catch(handleErr);
+    } else {
+      // Direct call (works when the page itself is served over HTTP on the local network).
+      fetch(`${cfg.baseUrl}${path}`, { method: 'GET', mode: 'no-cors' })
+        .then(handleOk)
+        .catch(handleErr);
+    }
   }, []);
 
   // ===== Run / Stop =====

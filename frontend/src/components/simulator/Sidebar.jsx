@@ -2,9 +2,13 @@ import React from 'react';
 import { COMPONENT_DEFS, SIDEBAR_ITEMS } from '../../lib/componentDefs';
 import {
   ToggleLeft, Zap, BatteryFull, Gauge, Activity, Bell, Box, Clock,
+  Cpu, Lightbulb, Power, PowerOff, OctagonAlert, Cable, Settings2,
 } from 'lucide-react';
 
-const ICONS = { ToggleLeft, Zap, BatteryFull, Gauge, Activity, Bell, Box, Clock };
+const ICONS = {
+  ToggleLeft, Zap, BatteryFull, Gauge, Activity, Bell, Box, Clock,
+  Cpu, Lightbulb, Power, PowerOff, OctagonAlert, Cable, Settings2,
+};
 
 export const Sidebar = ({ componentCounts }) => {
   const onDragStart = (e, type) => {

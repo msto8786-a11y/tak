@@ -244,5 +244,83 @@ const ComponentVisual = ({ comp, def, meterReading, loadEnergized, isCoilOn }) =
       </>
     );
   }
+  if (comp.type === 'relay') {
+    const e = !!comp.state?.energized;
+    return (
+      <>
+        <Rect x={-50} y={-55} width={100} height={22} fill="#0B132B" stroke={e ? c.energized : c.bodyStroke} strokeWidth={1.5} cornerRadius={3} />
+        <Text text="COIL" x={-50} y={-50} width={100} align="center" fontSize={11} fontFamily="JetBrains Mono, monospace" fontStyle="bold" fill={e ? c.energized : c.textSecondary} />
+        <Text text={e ? '⚡ مُغذّى' : '○ مفصول'} x={-def.width/2} y={-15} width={def.width} align="center" fontSize={13} fontFamily="JetBrains Mono, monospace" fontStyle="bold" fill={e ? c.green : c.textSecondary} />
+        <Rect x={-50} y={15} width={100} height={25} fill="#0B132B" stroke={c.bodyStroke} strokeWidth={1} cornerRadius={3} />
+        <Text text={e ? 'NO ●  NC ○' : 'NO ○  NC ●'} x={-50} y={22} width={100} align="center" fontSize={10} fontFamily="JetBrains Mono, monospace" fill={e ? c.green : c.textSecondary} />
+        <Text text="NO" x={-45} y={45} width={30} align="center" fontSize={9} fill={c.textSecondary} />
+        <Text text="NC" x={15} y={45} width={30} align="center" fontSize={9} fill={c.textSecondary} />
+      </>
+    );
+  }
+  if (comp.type === 'lamp_green' || comp.type === 'lamp_yellow' || comp.type === 'lamp_red') {
+    const on = !!loadEnergized;
+    const lampColor = def.lampColor || '#FACC15';
+    return (
+      <>
+        <Circle x={0} y={-5} radius={26} fill={on ? lampColor : '#0B132B'} stroke={on ? lampColor : c.bodyStroke} strokeWidth={2} shadowColor={on ? lampColor : undefined} shadowBlur={on ? 18 : 0} shadowOpacity={on ? 0.9 : 0} />
+        <Circle x={-7} y={-12} radius={6} fill="rgba(255,255,255,0.35)" opacity={on ? 0.6 : 0} />
+        <Text text={on ? 'ON' : 'OFF'} x={-def.width/2} y={20} width={def.width} align="center" fontSize={10} fontFamily="JetBrains Mono, monospace" fontStyle="bold" fill={on ? lampColor : c.textSecondary} />
+      </>
+    );
+  }
+  if (comp.type === 'push_button_start') {
+    const pressed = !!comp.state?.pressed;
+    return (
+      <>
+        <Circle x={0} y={-5} radius={18} fill={pressed ? c.green : '#0B132B'} stroke={c.green} strokeWidth={2} shadowColor={pressed ? c.green : undefined} shadowBlur={pressed ? 12 : 0} shadowOpacity={pressed ? 0.8 : 0} />
+        <Text text="I" x={-def.width/2} y={-13} width={def.width} align="center" fontSize={18} fontStyle="bold" fontFamily="JetBrains Mono, monospace" fill={pressed ? '#FFFFFF' : c.green} />
+        <Text text={pressed ? 'مضغوط' : 'تشغيل'} x={-def.width/2} y={5} width={def.width} align="center" fontSize={10} fontFamily="IBM Plex Sans Arabic" fill={pressed ? c.green : c.textSecondary} />
+      </>
+    );
+  }
+  if (comp.type === 'push_button_stop') {
+    const pressed = !!comp.state?.pressed;
+    return (
+      <>
+        <Circle x={0} y={-5} radius={18} fill={pressed ? c.red : '#0B132B'} stroke={c.red} strokeWidth={2} shadowColor={pressed ? c.red : undefined} shadowBlur={pressed ? 12 : 0} shadowOpacity={pressed ? 0.8 : 0} />
+        <Text text="O" x={-def.width/2} y={-13} width={def.width} align="center" fontSize={18} fontStyle="bold" fontFamily="JetBrains Mono, monospace" fill={pressed ? '#FFFFFF' : c.red} />
+        <Text text={pressed ? 'مضغوط' : 'إيقاف'} x={-def.width/2} y={5} width={def.width} align="center" fontSize={10} fontFamily="IBM Plex Sans Arabic" fill={pressed ? c.red : c.textSecondary} />
+      </>
+    );
+  }
+  if (comp.type === 'emergency_stop') {
+    const pressed = !!comp.state?.pressed;
+    return (
+      <>
+        {/* Outer yellow octagon ring */}
+        <Circle x={0} y={-3} radius={36} fill="#FACC15" opacity={0.15} />
+        <Circle x={0} y={-3} radius={32} fill={pressed ? '#7F1D1D' : '#DC2626'} stroke="#FACC15" strokeWidth={3} shadowColor={pressed ? c.red : undefined} shadowBlur={pressed ? 14 : 0} shadowOpacity={0.7} />
+        <Text text="STOP" x={-def.width/2} y={-12} width={def.width} align="center" fontSize={11} fontStyle="bold" fontFamily="JetBrains Mono, monospace" fill="#FFFFFF" />
+        <Text text="طوارئ" x={-def.width/2} y={2} width={def.width} align="center" fontSize={10} fontFamily="IBM Plex Sans Arabic" fill="#FFFFFF" />
+        {pressed && <Text text="● مفعّل" x={-def.width/2} y={20} width={def.width} align="center" fontSize={10} fontFamily="JetBrains Mono, monospace" fontStyle="bold" fill={c.red} />}
+      </>
+    );
+  }
+  if (comp.type === 'fuse') {
+    const blown = !!comp.state?.blown;
+    return (
+      <>
+        <Rect x={-30} y={-10} width={60} height={20} fill="#0B132B" stroke={blown ? c.red : c.bodyStroke} strokeWidth={1.5} cornerRadius={10} />
+        <Line points={[-30, 0, 30, 0]} stroke={blown ? c.red : c.green} strokeWidth={2.5} dash={blown ? [4, 4] : undefined} lineCap="round" />
+        <Text text={blown ? 'BLOWN' : 'FUSE'} x={-def.width/2} y={-22} width={def.width} align="center" fontSize={10} fontFamily="JetBrains Mono, monospace" fontStyle="bold" fill={blown ? c.red : c.textSecondary} />
+      </>
+    );
+  }
+  if (comp.type === 'breaker') {
+    const closed = !!comp.state?.closed;
+    return (
+      <>
+        <Rect x={-35} y={-15} width={70} height={28} fill="#0B132B" stroke={closed ? c.green : c.textSecondary} strokeWidth={1.5} cornerRadius={4} />
+        <Line points={closed ? [-25, 0, 25, 0] : [-25, 0, 20, -10]} stroke={closed ? c.green : c.textSecondary} strokeWidth={3} lineCap="round" />
+        <Text text={closed ? 'ON' : 'OFF'} x={-def.width/2} y={-25} width={def.width} align="center" fontSize={10} fontFamily="JetBrains Mono, monospace" fontStyle="bold" fill={closed ? c.green : c.textSecondary} />
+      </>
+    );
+  }
   return null;
 };

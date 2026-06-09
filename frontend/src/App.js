@@ -126,8 +126,16 @@ function App() {
   }, [running]);
 
   const handleDoubleClick = useCallback((comp) => {
-    if (comp.type === 'power_switch') {
+    if (comp.type === 'power_switch' || comp.type === 'breaker') {
       setComponents((prev) => prev.map((c) => (c.id === comp.id ? { ...c, state: { ...c.state, closed: !c.state.closed } } : c)));
+      return;
+    }
+    if (comp.type === 'push_button_start' || comp.type === 'push_button_stop' || comp.type === 'emergency_stop') {
+      setComponents((prev) => prev.map((c) => (c.id === comp.id ? { ...c, state: { ...c.state, pressed: !c.state.pressed } } : c)));
+      return;
+    }
+    if (comp.type === 'fuse') {
+      setComponents((prev) => prev.map((c) => (c.id === comp.id ? { ...c, state: { ...c.state, blown: !c.state.blown } } : c)));
       return;
     }
     if (comp.type === 'timer_relay') {
@@ -247,8 +255,9 @@ function App() {
   const handleStop = useCallback(() => {
     setRunning(false);
     setComponents((prev) => prev.map((c) => {
-      if (c.type === 'contactor') return { ...c, state: { ...c.state, energized: false } };
+      if (c.type === 'contactor' || c.type === 'relay') return { ...c, state: { ...c.state, energized: false } };
       if (c.type === 'timer_relay') return { ...c, state: { ...c.state, energized: false, coilOn: false, startedAt: null, remainingSec: 0 } };
+      if (c.type === 'push_button_start' || c.type === 'push_button_stop') return { ...c, state: { ...c.state, pressed: false } };
       return c;
     }));
     setSimResult({ energizedWires: new Set(), loadEnergized: {}, meters: {} });

@@ -1,0 +1,133 @@
+{
+  "project_name": "2D Industrial Control Lab Simulator",
+  "theme": "Dark",
+  "archetype": "4 (Swiss & High-Contrast - Technical Blueprint Variant)",
+  "language_direction": "rtl",
+  "design_philosophy": "Serious engineering-grade dashboard styling with CAD-like precision. Dark blueprint-inspired theme for high contrast between energized and idle electrical components.",
+  "typography": {
+    "primary_font": "IBM Plex Sans Arabic",
+    "secondary_font": "JetBrains Mono",
+    "font_weights": {
+      "light": "300",
+      "regular": "400",
+      "medium": "500",
+      "bold": "700"
+    },
+    "hierarchy": {
+      "h1": "text-2xl font-bold tracking-tight",
+      "h2": "text-xl font-medium",
+      "body": "text-base",
+      "labels": "text-sm font-medium tracking-wide text-muted-foreground",
+      "monospaced_values": "text-sm font-mono"
+    }
+  },
+  "colors": {
+    "background": {
+      "main": "#0B132B",
+      "sidebar": "#111A31",
+      "modal": "#1C2541",
+      "grid_lines": "rgba(58, 80, 107, 0.3)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#E0E1DD",
+      "muted": "#8D99AE"
+    },
+    "accents": {
+      "primary": "#00B4D8",
+      "run_state": "#10B981",
+      "stop_state": "#EF4444",
+      "energized_wire": "#FDE047",
+      "idle_wire": "#475569",
+      "terminal_node": "#94A3B8",
+      "terminal_node_active": "#38BDF8",
+      "error": "#EF4444"
+    }
+  },
+  "layout_and_spacing": {
+    "direction": "rtl",
+    "structure": "flex h-screen w-full bg-[#0B132B] overflow-hidden dir-rtl",
+    "sidebar": "w-72 flex-shrink-0 bg-[#111A31] border-l border-[#3A506B] p-4 flex flex-col gap-4 z-10 overflow-y-auto",
+    "workspace": "flex-grow relative bg-[#0B132B] cursor-crosshair overflow-hidden",
+    "topbar": "absolute top-4 left-4 right-72 flex justify-between items-center px-6 py-3 bg-[#111A31]/80 backdrop-blur-md border border-[#3A506B] rounded-lg z-20 pointer-events-auto",
+    "spacing_scale": "Tailwind standard (p-2, p-4, gap-4, p-6, etc.)"
+  },
+  "components": {
+    "sidebar_draggable_item": {
+      "classes": "flex items-center gap-3 p-3 bg-[#1C2541] rounded-md border border-[#3A506B] cursor-grab hover:border-[#00B4D8] hover:bg-[#1C2541]/80 transition-colors shadow-sm select-none",
+      "icon_classes": "w-6 h-6 text-[#00B4D8]",
+      "text_classes": "text-sm font-medium text-[#E0E1DD]"
+    },
+    "workspace_grid": {
+      "instructions": "Use Konva.js to draw a background grid. Grid lines should be 1px solid #3A506B at 30% opacity, spaced 20px apart. Add thicker lines (50% opacity) every 5th line (100px) for a true CAD blueprint feel."
+    },
+    "canvas_elements": {
+      "wire": {
+        "idle": {
+          "stroke": "#475569",
+          "strokeWidth": 3,
+          "lineCap": "round",
+          "lineJoin": "round"
+        },
+        "energized": {
+          "stroke": "#FDE047",
+          "strokeWidth": 4,
+          "shadowColor": "#FDE047",
+          "shadowBlur": 12,
+          "shadowOpacity": 0.8
+        }
+      },
+      "terminal_node": {
+        "radius": 6,
+        "fill": "#0B132B",
+        "stroke": "#94A3B8",
+        "strokeWidth": 2,
+        "hoverFill": "#38BDF8",
+        "hoverStroke": "#FFFFFF"
+      },
+      "component_body": {
+        "fill": "#1C2541",
+        "stroke": "#3A506B",
+        "strokeWidth": 2,
+        "cornerRadius": 6,
+        "shadowColor": "rgba(0,0,0,0.5)",
+        "shadowBlur": 10
+      }
+    },
+    "buttons": {
+      "run": "px-4 py-2 bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30 rounded hover:bg-[#10B981]/20 hover:border-[#10B981] transition-all font-bold flex items-center gap-2",
+      "stop": "px-4 py-2 bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/30 rounded hover:bg-[#EF4444]/20 hover:border-[#EF4444] transition-all font-bold flex items-center gap-2",
+      "icon_button": "p-2 text-[#8D99AE] hover:text-[#00B4D8] hover:bg-[#3A506B]/30 rounded transition-colors"
+    },
+    "modals": {
+      "overlay": "fixed inset-0 bg-[#0B132B]/80 backdrop-blur-sm z-50",
+      "content": "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#111A31] border border-[#3A506B] p-6 rounded-lg shadow-2xl w-[400px] z-50 flex flex-col gap-6",
+      "input": "w-full bg-[#1C2541] border border-[#3A506B] text-[#FFFFFF] px-3 py-2 rounded focus:outline-none focus:border-[#00B4D8] focus:ring-1 focus:ring-[#00B4D8]"
+    }
+  },
+  "interactions_and_motion": {
+    "drag_drop": "Cursor becomes grabbing. Item becomes semi-transparent while dragging. Snap to grid when dropped on canvas.",
+    "wiring": "Click first terminal -> draw dashed line to cursor -> click second terminal to finalize. Valid connection highlights terminal node in blue, invalid in red.",
+    "animations": {
+      "buzzer": "When energized, apply a rapid subtle x-axis shake animation to the Konva group and display sound wave arcs radiating outward.",
+      "contactor": "Visual switch closing animation (line moving) or color state change when coil (A1/A2) is energized.",
+      "wires": "Energized wires glow with drop-shadow effect in Konva (shadowBlur, shadowColor) or marching ants effect (lineDashOffset animation in Konva loop)."
+    }
+  },
+  "accessibility_and_testing": {
+    "data_testid_rules": "All interactive elements MUST have data-testid attributes. Example: data-testid='run-simulation-btn', data-testid='drag-item-timer', data-testid='settings-modal-input-ip'.",
+    "rtl_considerations": "UI is RTL. Sidebar on left, canvas on right. Ensure the container has dir='rtl'. Use standard logical properties where available."
+  },
+  "instructions_to_main_agent": [
+    "1. Setup the project layout as an RTL dashboard using dir='rtl' on the root container. The sidebar must stay on the left as requested.",
+    "2. Use the 'IBM Plex Sans Arabic' font for all text. Ensure it is imported via Fontsource or Google Fonts in index.css.",
+    "3. Use Konva.js (or react-konva) for the central CAD workspace. Implement a grid background using Konva.Line elements to simulate a blueprint.",
+    "4. For the sidebar draggable elements, implement HTML5 drag API. On drop over the Konva stage, get pointer position and spawn the respective Konva Component Group.",
+    "5. Implement node-to-node wiring logic: clicking a terminal starts drawing a wire. Clicking another terminal connects them. Maintain a graph structure in state.",
+    "6. During 'Run' (تشغيل المحاكاة), evaluate the electrical graph starting from power supplies to determine energized nodes. Update state and visually glow energized wires/terminals.",
+    "7. Implement Shadcn UI Dialogs for the Timer Relay settings (المؤقت الزمني) and Wi-Fi relay IP (إعدادات الواي فاي) when a user double-clicks the components.",
+    "8. Perform fetch requests to the configured Wi-Fi relay IP when specific virtual contactors are closed.",
+    "9. Use the defined dark technical color palette accurately to ensure a serious engineering tool feel.",
+    "10. Add `data-testid` to all crucial elements for testing automation."
+  ]
+}

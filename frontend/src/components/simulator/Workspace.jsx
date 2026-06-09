@@ -13,6 +13,7 @@ function getTerminalAbsPos(components, compId, termId) {
   const c = components.find((x) => x.id === compId);
   if (!c) return null;
   const def = COMPONENT_DEFS[c.type];
+  if (!def) return null;
   const t = def.terminals.find((x) => x.id === termId);
   if (!t) return null;
   return { x: c.x + t.x, y: c.y + t.y };
@@ -118,11 +119,13 @@ export const Workspace = ({
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const c of components) {
       const def = COMPONENT_DEFS[c.type];
+      if (!def) continue;
       minX = Math.min(minX, c.x - def.width / 2);
       minY = Math.min(minY, c.y - def.height / 2);
       maxX = Math.max(maxX, c.x + def.width / 2);
       maxY = Math.max(maxY, c.y + def.height / 2);
     }
+    if (!isFinite(minX)) { zoomReset(); return; }
     const pad = 80;
     const w = (maxX - minX) + pad * 2;
     const h = (maxY - minY) + pad * 2;

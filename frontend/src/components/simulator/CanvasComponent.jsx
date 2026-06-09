@@ -34,6 +34,7 @@ export const CanvasComponent = ({
   running,
 }) => {
   const def = COMPONENT_DEFS[comp.type];
+  if (!def) return null;
   const isEnergizedCoil = !!comp.state?.energized;
   const isCoilOn = !!comp.state?.coilOn; // timer coil receiving power but not yet elapsed
   const buzzerActive = def.isLoad && comp.type === 'buzzer' && loadEnergized;

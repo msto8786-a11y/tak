@@ -29,6 +29,7 @@ function buildGroups(components, wires) {
   // Internal links per component
   for (const c of components) {
     const def = COMPONENT_DEFS[c.type];
+    if (!def) continue;
     const links = def.internalLinks(c.state || {});
     for (const [a, b] of links) {
       dsu.union(termKey(c.id, a), termKey(c.id, b));
@@ -61,7 +62,7 @@ export function simulate(components, wires) {
     const negativeRoots = new Set();
     for (const c of updatedComponents) {
       const def = COMPONENT_DEFS[c.type];
-      if (!def.isSource) continue;
+      if (!def || !def.isSource) continue;
       for (const t of def.terminals) {
         if (t.polarity === 'positive') positiveRoots.add(dsu.find(termKey(c.id, t.id)));
         if (t.polarity === 'negative') negativeRoots.add(dsu.find(termKey(c.id, t.id)));
@@ -75,6 +76,7 @@ export function simulate(components, wires) {
     // We simplify: any + source group ↔ A1 and any - source group ↔ A2.
     for (const c of updatedComponents) {
       const def = COMPONENT_DEFS[c.type];
+      if (!def) continue;
       if (def.hasCoil) {
         const aRoot = dsu.find(termKey(c.id, def.hasCoil.positive));
         const bRoot = dsu.find(termKey(c.id, def.hasCoil.negative));
@@ -108,7 +110,7 @@ export function simulate(components, wires) {
   const negRoots = new Set();
   for (const c of updatedComponents) {
     const def = COMPONENT_DEFS[c.type];
-    if (!def.isSource) continue;
+    if (!def || !def.isSource) continue;
     for (const t of def.terminals) {
       if (t.polarity === 'positive') posRoots.add(dsu.find(termKey(c.id, t.id)));
       if (t.polarity === 'negative') negRoots.add(dsu.find(termKey(c.id, t.id)));
@@ -131,6 +133,7 @@ export function simulate(components, wires) {
   const loadEnergized = {};
   for (const c of updatedComponents) {
     const def = COMPONENT_DEFS[c.type];
+    if (!def) continue;
     if (def.isLoad) {
       const ra = dsu.find(termKey(c.id, def.terminals[0].id));
       const rb = dsu.find(termKey(c.id, def.terminals[1].id));
@@ -143,6 +146,7 @@ export function simulate(components, wires) {
   const meters = {};
   for (const c of updatedComponents) {
     const def = COMPONENT_DEFS[c.type];
+    if (!def) continue;
     if (def.isMeter === 'voltage') {
       const ra = dsu.find(termKey(c.id, 'P'));
       const rb = dsu.find(termKey(c.id, 'M'));
@@ -150,7 +154,7 @@ export function simulate(components, wires) {
       let voltage = 0;
       for (const src of updatedComponents) {
         const srcDef = COMPONENT_DEFS[src.type];
-        if (!srcDef.isSource) continue;
+        if (!srcDef || !srcDef.isSource) continue;
         const posT = srcDef.terminals.find((t) => t.polarity === 'positive');
         const negT = srcDef.terminals.find((t) => t.polarity === 'negative');
         const sp = dsu.find(termKey(src.id, posT.id));

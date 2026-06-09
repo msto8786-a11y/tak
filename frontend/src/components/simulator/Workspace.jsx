@@ -58,6 +58,7 @@ export const Workspace = ({
   onSelectWire,
   onCancelWire,
   running,
+  apiRef,
 }) => {
   const containerRef = useRef(null);
   const stageRef = useRef(null);
@@ -135,6 +136,32 @@ export const Workspace = ({
       y: size.height / 2 - cy * finalScale,
     });
   }, [components, size, zoomReset]);
+
+  // Expose imperative API to the parent App (export, zoom)
+  useEffect(() => {
+    if (!apiRef) return;
+    apiRef.current = {
+      stage: stageRef.current,
+      getStage: () => stageRef.current,
+      zoomIn, zoomOut, zoomReset, zoomToFit,
+    };
+  }, [apiRef, zoomIn, zoomOut, zoomReset, zoomToFit]);
+
+  // Keyboard shortcuts: Ctrl + +/- zoom, Ctrl+0 reset, Ctrl+1 fit
+  useEffect(() => {
+    const handler = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const k = e.key;
+      if (k === '+' || k === '=') { e.preventDefault(); zoomIn(); }
+      else if (k === '-' || k === '_') { e.preventDefault(); zoomOut(); }
+      else if (k === '0') { e.preventDefault(); zoomReset(); }
+      else if (k === '1') { e.preventDefault(); zoomToFit(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [zoomIn, zoomOut, zoomReset, zoomToFit]);
 
   const onWheel = (e) => {
     e.evt.preventDefault();
@@ -351,7 +378,7 @@ export const Workspace = ({
       {/* Pan hint */}
       <div className="absolute bottom-4 left-20 flex items-center gap-1.5 text-[10px] font-mono text-[#8D99AE] bg-[#111A31]/80 backdrop-blur-md border border-[#3A506B] rounded px-2 py-1 z-10 pointer-events-none">
         <Move size={11} />
-        <span>زر أوسط / يمين للسحب · العجلة للتكبير</span>
+        <span>زر أوسط/يمين للسحب · العجلة للتكبير · Ctrl+±/0/1</span>
       </div>
 
       {components.length === 0 && (

@@ -1,7 +1,19 @@
-import React from 'react';
-import { Play, Square, Wifi, Save, FolderOpen, Trash2, Cloud } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Play, Square, Wifi, Save, FolderOpen, Trash2, Cloud, Download, FileImage, FileCode } from 'lucide-react';
 
-export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear, onSessions, wifiStatus, selectedItem, onDelete }) => {
+export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear, onSessions, wifiStatus, selectedItem, onDelete, onExportPNG, onExportSVG }) => {
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef(null);
+
+  useEffect(() => {
+    if (!exportOpen) return undefined;
+    const handler = (e) => {
+      if (exportRef.current && !exportRef.current.contains(e.target)) setExportOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [exportOpen]);
+
   return (
     <div
       data-testid="topbar"
@@ -58,6 +70,38 @@ export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear
         >
           <FolderOpen size={18} />
         </button>
+        <div className="relative" ref={exportRef}>
+          <button
+            data-testid="open-export-menu-btn"
+            onClick={() => setExportOpen((v) => !v)}
+            className={`p-2 rounded transition-colors ${exportOpen ? 'text-[#00B4D8] bg-[#3A506B]/30' : 'text-[#8D99AE] hover:text-[#00B4D8] hover:bg-[#3A506B]/30'}`}
+            title="تصدير المخطط (PNG / SVG)"
+          >
+            <Download size={18} />
+          </button>
+          {exportOpen && (
+            <div data-testid="export-menu" className="absolute left-0 mt-2 w-48 bg-[#111A31] border border-[#3A506B] rounded-lg shadow-2xl py-1 z-30">
+              <button
+                data-testid="export-png-btn"
+                onClick={() => { setExportOpen(false); onExportPNG(); }}
+                className="w-full text-right flex items-center gap-2 px-3 py-2 text-sm text-[#E0E1DD] hover:bg-[#1C2541] hover:text-[#00B4D8] transition-colors"
+              >
+                <FileImage size={14} className="text-[#00B4D8]" />
+                <span className="flex-1 text-right">صورة PNG</span>
+                <span className="text-[10px] font-mono text-[#8D99AE]">.png</span>
+              </button>
+              <button
+                data-testid="export-svg-btn"
+                onClick={() => { setExportOpen(false); onExportSVG(); }}
+                className="w-full text-right flex items-center gap-2 px-3 py-2 text-sm text-[#E0E1DD] hover:bg-[#1C2541] hover:text-[#00B4D8] transition-colors"
+              >
+                <FileCode size={14} className="text-[#00B4D8]" />
+                <span className="flex-1 text-right">مخطط SVG</span>
+                <span className="text-[10px] font-mono text-[#8D99AE]">.svg</span>
+              </button>
+            </div>
+          )}
+        </div>
         {selectedItem && (
           <button
             data-testid="delete-selected-btn"

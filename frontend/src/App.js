@@ -7,6 +7,7 @@ import { TimerModal } from '@/components/simulator/TimerModal';
 import { WifiModal } from '@/components/simulator/WifiModal';
 import { SessionsModal } from '@/components/simulator/SessionsModal';
 import { buildExampleCircuit } from '@/lib/exampleCircuit';
+import { exportPNG, exportSVG } from '@/lib/exportImage';
 import { COMPONENT_DEFS } from '@/lib/componentDefs';
 import { simulate } from '@/lib/simulation';
 import '@/App.css';
@@ -277,6 +278,25 @@ function App() {
     setRunning(false);
   }, []);
 
+  // ----- Export PNG / SVG -----
+  const workspaceApiRef = useRef(null);
+
+  const handleExportPNG = useCallback(() => {
+    if (components.length === 0) { toast.error('لا توجد مكونات للتصدير'); return; }
+    const api = workspaceApiRef.current;
+    if (!api || !api.getStage()) { toast.error('غير جاهز للتصدير'); return; }
+    const res = exportPNG(api.getStage(), components, simResult.energizedWires);
+    if (res.ok) toast.success('تم تصدير المخطط كصورة PNG');
+    else toast.error(res.error || 'فشل التصدير');
+  }, [components, simResult.energizedWires]);
+
+  const handleExportSVG = useCallback(() => {
+    if (components.length === 0) { toast.error('لا توجد مكونات للتصدير'); return; }
+    const res = exportSVG(components, wires, simResult.energizedWires);
+    if (res.ok) toast.success('تم تصدير المخطط كملف SVG');
+    else toast.error(res.error || 'فشل التصدير');
+  }, [components, wires, simResult.energizedWires]);
+
   // ---- Wi-Fi relay HTTP call ----
   // Triggers HTTP GET to the standalone Wi-Fi relay module (no Arduino).
   // baseUrl & paths are configurable from the إعدادات الواي فاي modal.
@@ -418,6 +438,8 @@ function App() {
         wifiStatus={wifiStatus}
         selectedItem={selectedItem}
         onDelete={handleDeleteSelected}
+        onExportPNG={handleExportPNG}
+        onExportSVG={handleExportSVG}
       />
       <div className="flex flex-1 overflow-hidden flex-row-reverse">
         <Sidebar componentCounts={componentCounts} />
@@ -437,6 +459,7 @@ function App() {
           onSelectWire={(id) => setSelectedItem({ kind: 'wire', id })}
           onCancelWire={() => { setSelectedTerminal(null); setSelectedItem(null); }}
           running={running}
+          apiRef={workspaceApiRef}
         />
       </div>
 

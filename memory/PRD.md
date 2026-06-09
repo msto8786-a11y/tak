@@ -26,19 +26,22 @@ A web-based 2D simulator for a Classic Industrial Control Lab (Arabic UI), gradu
 ## What's been implemented (2026-02-09)
 - Full Arabic RTL UI with IBM Plex Sans Arabic font.
 - Dark "blueprint" technical theme based on design_guidelines.json.
-- Left sidebar with all 8 component types, draggable HTML5 DnD, with max-count enforcement and tooltips.
-- Konva grid workspace with snap-to-grid (20px), pan-free canvas.
-- All 8 components rendered with proper terminals, labels, and per-type visuals.
+- Left sidebar with **17 component types**, draggable HTML5 DnD, with max-count enforcement.
+- Konva grid workspace with snap-to-grid (20px).
+- All 17 components rendered: power_switch, breaker (max 2), fuse (max 3), emergency_stop (max 1), push_button_start/stop (max 3 each), ac_supply, dc_supply, voltmeter, ammeter, buzzer (max 3), lamp_green/yellow/red (max 3 each), contactor (max 3), relay (max 3), timer_relay (max 3).
 - Click-to-wire (terminal → terminal) with pending dashed preview, duplicate prevention.
-- Power Switch double-click toggles ON/OFF.
-- Timer Relay double-click opens Arabic modal (seconds/minutes + duration).
+- Double-click toggles: power_switch/breaker (closed), push buttons & emergency_stop (pressed), fuse (blown), timer_relay (opens settings modal).
 - Wi-Fi settings modal (base URL, on/off paths, enable toggle).
-- Save/Load session (LocalStorage + JSON file export/import).
-- Clear workspace.
+- Sessions Manager modal (cloud icon): save/load/delete sessions in MongoDB. Includes an "Example self-holding circuit" loader.
+- JSON file Export/Import + LocalStorage quick-save.
+- Clear workspace + Delete-selected (component or wire) via topbar button or Delete/Backspace keys.
+- Selection state: click component or wire shows accent border / cyan stroke. Click empty stage deselects.
 - Electrical simulation: Union-Find over terminals, iterative stable-state evaluation, supports self-holding circuits and NC/NO contactor logic.
-- Live energized-wire glow, buzzer sound-wave animation, voltmeter/ammeter readings.
-- Timer countdown with live "متبقي Xs" display, NO→close after delay.
-- Wi-Fi relay HTTP GET on contactor state change (3 channels, in placement order).
+- Live energized-wire glow, buzzer sound-wave animation, voltmeter/ammeter readings, lamp glow with color.
+- Timer countdown with live "متبقي Xs" display.
+- **Wi-Fi relay HTTP** GET on contactor+relay state change — first 3 devices (contactor or relay, in placement order) map to channels 1-3.
+- Backend Mongo `lab_sessions` collection with full CRUD endpoints: POST/GET/PUT/DELETE /api/sessions.
+- Optional `POST /api/wifi-relay/forward` backend proxy to avoid mixed-content warnings.
 
 ## Prioritized Backlog
 - **P1**: Backend MongoDB persistence for student sessions (login).

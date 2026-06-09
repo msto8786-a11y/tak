@@ -34,11 +34,13 @@ export const Workspace = ({
   loadEnergized,
   meters,
   selectedTerminal,
+  selectedItem,
   onDropComponent,
   onMoveComponent,
   onTerminalClick,
   onDoubleClickComponent,
   onSelectComponent,
+  onSelectWire,
   onCancelWire,
   running,
 }) => {
@@ -125,20 +127,25 @@ export const Workspace = ({
             const to = getTerminalAbsPos(components, w.to.compId, w.to.termId);
             if (!from || !to) return null;
             const isEnergized = energizedWires.has(w.id);
-            // simple orthogonal routing: H then V at midpoint
+            const isSelected = selectedItem && selectedItem.kind === 'wire' && selectedItem.id === w.id;
             const midX = (from.x + to.x) / 2;
             const points = [from.x, from.y, midX, from.y, midX, to.y, to.x, to.y];
             return (
               <Line
                 key={w.id}
                 points={points}
-                stroke={isEnergized ? '#FDE047' : '#475569'}
-                strokeWidth={isEnergized ? 3.5 : 2.5}
+                stroke={isSelected ? '#00B4D8' : (isEnergized ? '#FDE047' : '#475569')}
+                strokeWidth={isSelected ? 5 : (isEnergized ? 3.5 : 2.5)}
+                hitStrokeWidth={14}
                 lineCap="round"
                 lineJoin="round"
-                shadowColor={isEnergized ? '#FDE047' : undefined}
-                shadowBlur={isEnergized ? 10 : 0}
-                shadowOpacity={isEnergized ? 0.7 : 0}
+                shadowColor={isSelected ? '#00B4D8' : (isEnergized ? '#FDE047' : undefined)}
+                shadowBlur={isSelected ? 14 : (isEnergized ? 10 : 0)}
+                shadowOpacity={isSelected ? 0.9 : (isEnergized ? 0.7 : 0)}
+                onClick={(e) => { e.cancelBubble = true; onSelectWire(w.id); }}
+                onTap={(e) => { e.cancelBubble = true; onSelectWire(w.id); }}
+                onMouseEnter={(e) => { e.target.getStage().container().style.cursor = 'pointer'; }}
+                onMouseLeave={(e) => { e.target.getStage().container().style.cursor = 'default'; }}
               />
             );
           })}
@@ -164,6 +171,7 @@ export const Workspace = ({
               meterReading={meters[c.id]}
               loadEnergized={loadEnergized[c.id]}
               selectedTerminal={selectedTerminal}
+              selected={selectedItem && selectedItem.kind === 'component' && selectedItem.id === c.id}
               hoveredTerminal={hovered}
               onDragMove={(id, x, y) => onMoveComponent(id, x, y, false)}
               onDragEnd={(id, x, y) => {

@@ -23,6 +23,7 @@ export const CanvasComponent = ({
   meterReading,
   loadEnergized,
   selectedTerminal,
+  selected,
   hoveredTerminal,
   onDragMove,
   onDragEnd,
@@ -56,12 +57,13 @@ export const CanvasComponent = ({
         width={def.width}
         height={def.height}
         fill={PALETTE.body}
-        stroke={isEnergizedCoil ? PALETTE.energized : PALETTE.bodyStroke}
-        strokeWidth={isEnergizedCoil ? 2 : 1.5}
+        stroke={selected ? PALETTE.accent : (isEnergizedCoil ? PALETTE.energized : PALETTE.bodyStroke)}
+        strokeWidth={selected ? 2.5 : (isEnergizedCoil ? 2 : 1.5)}
         cornerRadius={6}
-        shadowColor="rgba(0,0,0,0.4)"
-        shadowBlur={8}
+        shadowColor={selected ? PALETTE.accent : 'rgba(0,0,0,0.4)'}
+        shadowBlur={selected ? 14 : 8}
         shadowOffset={{ x: 0, y: 2 }}
+        shadowOpacity={selected ? 0.7 : 1}
       />
 
       {/* Title bar */}

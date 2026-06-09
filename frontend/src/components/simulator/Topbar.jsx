@@ -1,7 +1,7 @@
 import React from 'react';
-import { Play, Square, Wifi, Save, FolderOpen, Trash2 } from 'lucide-react';
+import { Play, Square, Wifi, Save, FolderOpen, Trash2, Cloud } from 'lucide-react';
 
-export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear, wifiStatus }) => {
+export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear, onSessions, wifiStatus, selectedItem, onDelete }) => {
   return (
     <div
       data-testid="topbar"
@@ -35,10 +35,18 @@ export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear
           <Wifi size={18} />
         </button>
         <button
+          data-testid="open-sessions-btn"
+          onClick={onSessions}
+          className="p-2 text-[#8D99AE] hover:text-[#00B4D8] hover:bg-[#3A506B]/30 rounded transition-colors"
+          title="جلسات الطلاب (قاعدة البيانات)"
+        >
+          <Cloud size={18} />
+        </button>
+        <button
           data-testid="save-session-btn"
           onClick={onSave}
           className="p-2 text-[#8D99AE] hover:text-[#00B4D8] hover:bg-[#3A506B]/30 rounded transition-colors"
-          title="حفظ الجلسة"
+          title="تصدير ملف JSON"
         >
           <Save size={18} />
         </button>
@@ -46,10 +54,20 @@ export const Topbar = ({ running, onRun, onStop, onWifi, onSave, onLoad, onClear
           data-testid="load-session-btn"
           onClick={onLoad}
           className="p-2 text-[#8D99AE] hover:text-[#00B4D8] hover:bg-[#3A506B]/30 rounded transition-colors"
-          title="تحميل جلسة"
+          title="استيراد ملف JSON"
         >
           <FolderOpen size={18} />
         </button>
+        {selectedItem && (
+          <button
+            data-testid="delete-selected-btn"
+            onClick={onDelete}
+            className="p-2 text-[#EF4444] hover:bg-[#EF4444]/15 rounded transition-colors border border-[#EF4444]/30"
+            title="حذف العنصر المحدد (Delete)"
+          >
+            <Trash2 size={18} />
+          </button>
+        )}
         <button
           data-testid="clear-workspace-btn"
           onClick={onClear}

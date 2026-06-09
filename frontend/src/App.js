@@ -5,6 +5,8 @@ import { Topbar } from '@/components/simulator/Topbar';
 import { Workspace } from '@/components/simulator/Workspace';
 import { TimerModal } from '@/components/simulator/TimerModal';
 import { WifiModal } from '@/components/simulator/WifiModal';
+import { SessionsModal } from '@/components/simulator/SessionsModal';
+import { buildExampleCircuit } from '@/lib/exampleCircuit';
 import { COMPONENT_DEFS } from '@/lib/componentDefs';
 import { simulate } from '@/lib/simulation';
 import '@/App.css';
@@ -35,10 +37,11 @@ function App() {
   const [components, setComponents] = useState([]);
   const [wires, setWires] = useState([]);
   const [selectedTerminal, setSelectedTerminal] = useState(null);
-  const [, setSelectedComp] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null); // { kind: 'component'|'wire', id }
   const [running, setRunning] = useState(false);
   const [timerModalCompId, setTimerModalCompId] = useState(null);
   const [wifiModalOpen, setWifiModalOpen] = useState(false);
+  const [sessionsModalOpen, setSessionsModalOpen] = useState(false);
   const [wifiConfig, setWifiConfig] = useState(loadWifiConfig);
   const [wifiStatus, setWifiStatus] = useState('idle');
 
@@ -64,16 +67,17 @@ function App() {
     return out;
   }, [components]);
 
-  const contactorChannels = useMemo(() => {
+  // Unified channel assignment: first 3 power-switching devices (contactor + relay) in placement order
+  const deviceChannels = useMemo(() => {
     const map = {};
     let ch = 1;
     for (const c of components) {
-      if (c.type === 'contactor' && ch <= 3) { map[c.id] = ch++; }
+      if ((c.type === 'contactor' || c.type === 'relay') && ch <= 3) { map[c.id] = ch++; }
     }
     return map;
   }, [components]);
-  const contactorChannelsRef = useRef(contactorChannels);
-  useEffect(() => { contactorChannelsRef.current = contactorChannels; }, [contactorChannels]);
+  const deviceChannelsRef = useRef(deviceChannels);
+  useEffect(() => { deviceChannelsRef.current = deviceChannels; }, [deviceChannels]);
 
   // ===== Component ops =====
   const handleDropComponent = useCallback((type, x, y) => {
@@ -219,6 +223,60 @@ function App() {
     toast.success('تم حفظ إعدادات الواي فاي');
   }, []);
 
+  // Delete selected component or wire
+  const handleDeleteSelected = useCallback(() => {
+    if (!selectedItem) return;
+    if (running) {
+      toast.error('أوقف المحاكاة قبل الحذف');
+      return;
+    }
+    if (selectedItem.kind === 'wire') {
+      setWires((prev) => prev.filter((w) => w.id !== selectedItem.id));
+      toast.success('تم حذف التوصيل');
+    } else if (selectedItem.kind === 'component') {
+      // Also remove any wires attached to this component
+      setWires((prev) => prev.filter((w) => w.from.compId !== selectedItem.id && w.to.compId !== selectedItem.id));
+      setComponents((prev) => prev.filter((c) => c.id !== selectedItem.id));
+      toast.success('تم حذف المكون');
+    }
+    setSelectedItem(null);
+  }, [selectedItem, running]);
+
+  // Keyboard delete
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      // Ignore if focus is in an input/textarea
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (selectedItem) {
+        e.preventDefault();
+        handleDeleteSelected();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedItem, handleDeleteSelected]);
+
+  // Load example self-holding circuit
+  const handleLoadExample = useCallback(() => {
+    const { components: cs, wires: ws } = buildExampleCircuit();
+    setComponents(cs);
+    setWires(ws);
+    setSelectedItem(null);
+    setSelectedTerminal(null);
+    setRunning(false);
+    toast.success('تم تحميل دائرة المثال — اضغط تشغيل ثم اضغط على زر التشغيل لتفعيل الدائرة');
+  }, []);
+
+  const handleLoadFromSessions = useCallback(({ components: cs, wires: ws }) => {
+    setComponents(cs);
+    setWires(ws);
+    setSelectedItem(null);
+    setSelectedTerminal(null);
+    setRunning(false);
+  }, []);
+
   // ---- Wi-Fi relay HTTP call ----
   // Triggers HTTP GET to the standalone Wi-Fi relay module (no Arduino).
   // baseUrl & paths are configurable from the إعدادات الواي فاي modal.
@@ -317,9 +375,9 @@ function App() {
       // Wi-Fi diffing
       const prevS = prevContactorStatesRef.current;
       const nextS = {};
-      const channels = contactorChannelsRef.current;
+      const channels = deviceChannelsRef.current;
       for (const c of finalComps) {
-        if (c.type === 'contactor') {
+        if (c.type === 'contactor' || c.type === 'relay') {
           const ch = channels[c.id];
           if (!ch) continue;
           nextS[ch] = !!c.state.energized;
@@ -353,10 +411,13 @@ function App() {
         onRun={handleRun}
         onStop={handleStop}
         onWifi={() => setWifiModalOpen(true)}
+        onSessions={() => setSessionsModalOpen(true)}
         onSave={handleSaveSession}
         onLoad={handleLoadSession}
         onClear={handleClear}
         wifiStatus={wifiStatus}
+        selectedItem={selectedItem}
+        onDelete={handleDeleteSelected}
       />
       <div className="flex flex-1 overflow-hidden flex-row-reverse">
         <Sidebar componentCounts={componentCounts} />
@@ -367,12 +428,14 @@ function App() {
           loadEnergized={simResult.loadEnergized}
           meters={simResult.meters}
           selectedTerminal={selectedTerminal}
+          selectedItem={selectedItem}
           onDropComponent={handleDropComponent}
           onMoveComponent={handleMoveComponent}
           onTerminalClick={handleTerminalClick}
           onDoubleClickComponent={handleDoubleClick}
-          onSelectComponent={setSelectedComp}
-          onCancelWire={() => setSelectedTerminal(null)}
+          onSelectComponent={(c) => setSelectedItem(c ? { kind: 'component', id: c.id } : null)}
+          onSelectWire={(id) => setSelectedItem({ kind: 'wire', id })}
+          onCancelWire={() => { setSelectedTerminal(null); setSelectedItem(null); }}
           running={running}
         />
       </div>
@@ -390,6 +453,15 @@ function App() {
         initial={wifiConfig}
         onClose={() => setWifiModalOpen(false)}
         onSave={handleSaveWifi}
+      />
+      <SessionsModal
+        open={sessionsModalOpen}
+        onClose={() => setSessionsModalOpen(false)}
+        currentComponents={components}
+        currentWires={wires}
+        onLoad={handleLoadFromSessions}
+        onLoadExample={handleLoadExample}
+        toast={toast}
       />
 
       <Toaster

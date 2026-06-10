@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { X, Wifi, RadioTower, Loader2 } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
 export const WifiModal = ({ open, initial, onClose, onSave }) => {
   const [baseUrl, setBaseUrl] = useState(() => initial?.baseUrl || 'http://192.168.1.100');
   const [onPath, setOnPath] = useState(() => initial?.onPath || '/relay/on/{channel}');
@@ -13,38 +11,18 @@ export const WifiModal = ({ open, initial, onClose, onSave }) => {
 
   const handleTest = async (channel) => {
     setTesting(true); setTestResult(null);
-    const isHttps = window.location.protocol === 'https:';
     const path = onPath.replace('{channel}', String(channel));
     try {
-      if (isHttps) {
-        const r = await fetch(`${BACKEND_URL}/api/wifi-relay/forward`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base_url: baseUrl, path }),
-        });
-        const j = await r.json();
-        if (j.status === 'ok') setTestResult({ ok: true, message: `وصل الطلب بنجاح (HTTP ${j.code})` });
-        else setTestResult({ ok: false, message: j.message || 'فشل الاتصال بوحدة الريليه' });
-      } else {
-        await fetch(`${baseUrl}${path}`, { method: 'GET', mode: 'no-cors' });
-        setTestResult({ ok: true, message: 'تم إرسال الطلب (لا يمكن قراءة الرد في وضع no-cors)' });
-      }
+      await fetch(`${baseUrl}${path}`, { method: 'GET', mode: 'no-cors' });
+      setTestResult({ ok: true, message: 'تم إرسال الطلب إلى الوحدة (لا يمكن قراءة الرد في وضع no-cors)' });
     } catch (e) {
-      setTestResult({ ok: false, message: 'تعذّر الوصول إلى وحدة الواي فاي' });
+      setTestResult({ ok: false, message: 'تعذّر الوصول إلى وحدة الواي فاي (تأكد من نفس الشبكة + الـ IP صحيح)' });
     } finally {
       setTesting(false);
       // Auto-turn-off after 800ms so we don't leave the relay engaged after a test
       setTimeout(() => {
         const offP = offPath.replace('{channel}', String(channel));
-        if (isHttps) {
-          fetch(`${BACKEND_URL}/api/wifi-relay/forward`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base_url: baseUrl, path: offP }),
-          }).catch(() => {});
-        } else {
-          fetch(`${baseUrl}${offP}`, { method: 'GET', mode: 'no-cors' }).catch(() => {});
-        }
+        fetch(`${baseUrl}${offP}`, { method: 'GET', mode: 'no-cors' }).catch(() => {});
       }, 800);
     }
   };

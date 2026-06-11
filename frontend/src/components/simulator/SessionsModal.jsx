@@ -1,29 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { X, FolderOpen, Trash2, Save, Database, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, FolderOpen, Trash2, Save, Database, BookOpen, Loader2, Cloud, HardDrive } from 'lucide-react';
+import { isSupabaseConfigured, listSessions as sbList, getSession as sbGet, createSession as sbCreate, deleteSession as sbDelete } from '../../lib/supabaseClient';
 
-const STORE_KEY = 'control-lab-simulator/sessions/v1';
+const LOCAL_STORE_KEY = 'control-lab-simulator/sessions/v1';
 
-function loadAll() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+// --- LocalStorage helpers ---
+function localLoadAll() {
+  try { const raw = localStorage.getItem(LOCAL_STORE_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
 }
-
-function saveAll(list) {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(list));
-    return true;
-  } catch {
-    return false;
-  }
+function localSaveAll(list) {
+  try { localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(list)); return true; } catch { return false; }
 }
+function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+// --- Unified Sessions Backend ---
+async function listSessions(useCloud) {
+  if (useCloud) return await sbList();
+  return localLoadAll();
+}
+async function createSession(useCloud, payload) {
+  if (useCloud) return await sbCreate(payload);
+  const now = new Date().toISOString();
+  const item = {
+    id: uid(),
+    name: payload.name,
+    student_name: payload.student_name || '',
+    components: payload.components || [],
+    wires: payload.wires || [],
+    created_at: now, updated_at: now,
+  };
+  const list = localLoadAll();
+  localSaveAll([item, ...list]);
+  return item;
+}
+async function deleteSession(useCloud, id) {
+  if (useCloud) return await sbDelete(id);
+  localSaveAll(localLoadAll().filter((x) => x.id !== id));
+  return true;
+}
+async function loadSession(useCloud, id) {
+  if (useCloud) return await sbGet(id);
+  const found = localLoadAll().find((x) => x.id === id);
+  if (!found) throw new Error('Not found');
+  return found;
 }
 
 export const SessionsModal = ({ open, onClose, currentComponents, currentWires, onLoad, onLoadExample, toast }) => {
@@ -41,102 +60,76 @@ export const SessionsModal = ({ open, onClose, currentComponents, currentWires, 
 };
 
 const SessionsModalContent = ({ onClose, currentComponents, currentWires, onLoad, onLoadExample, toast }) => {
-  const [sessions, setSessions] = useState(() => loadAll());
+  const useCloud = isSupabaseConfigured();
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
   const [studentName, setStudentName] = useState('');
 
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === STORE_KEY) setSessions(loadAll());
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const handleSave = () => {
-    if (!name.trim()) {
-      toast.error('يرجى إدخال اسم الجلسة');
-      return;
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await listSessions(useCloud);
+      // For local storage, attach computed counts
+      const normalized = data.map((d) => ({
+        ...d,
+        component_count: d.component_count ?? (Array.isArray(d.components) ? d.components.length : 0),
+        wire_count: d.wire_count ?? (Array.isArray(d.wires) ? d.wires.length : 0),
+      }));
+      setSessions(normalized);
+    } catch (e) {
+      toast.error(useCloud ? 'فشل تحميل قائمة الجلسات من Supabase' : 'فشل تحميل القائمة');
+    } finally {
+      setLoading(false);
     }
-    const nowIso = new Date().toISOString();
-    const newSession = {
-      id: uid(),
-      name: name.trim(),
-      student_name: studentName.trim(),
-      components: currentComponents,
-      wires: currentWires,
-      created_at: nowIso,
-      updated_at: nowIso,
-      component_count: currentComponents.length,
-      wire_count: currentWires.length,
-    };
-    const next = [newSession, ...sessions];
-    if (saveAll(next)) {
-      setSessions(next);
-      setName('');
-      setStudentName('');
-      toast.success('تم حفظ الجلسة في المتصفح');
-    } else {
-      toast.error('فشل الحفظ (مساحة المتصفح ممتلئة)');
+  }, [useCloud, toast]);
+
+  // eslint-disable-next-line
+  useEffect(() => { refresh(); }, []);
+
+  const handleSave = async () => {
+    if (!name.trim()) { toast.error('يرجى إدخال اسم الجلسة'); return; }
+    setSaving(true);
+    try {
+      await createSession(useCloud, {
+        name: name.trim(),
+        student_name: studentName.trim(),
+        components: currentComponents,
+        wires: currentWires,
+      });
+      toast.success(useCloud ? 'تم حفظ الجلسة في Supabase' : 'تم حفظ الجلسة في المتصفح');
+      setName(''); setStudentName('');
+      await refresh();
+    } catch (e) {
+      toast.error('فشل حفظ الجلسة');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleLoad = (s) => {
-    onLoad({ components: s.components || [], wires: s.wires || [] });
-    toast.success(`تم تحميل: ${s.name}`);
-    onClose();
+  const handleLoad = async (id) => {
+    try {
+      const s = await loadSession(useCloud, id);
+      onLoad({ components: s.components || [], wires: s.wires || [] });
+      toast.success(`تم تحميل: ${s.name}`);
+      onClose();
+    } catch { toast.error('فشل التحميل'); }
   };
 
-  const handleDelete = (s) => {
+  const handleDelete = async (s) => {
     if (!window.confirm(`حذف الجلسة "${s.name}"؟`)) return;
-    const next = sessions.filter((x) => x.id !== s.id);
-    if (saveAll(next)) {
-      setSessions(next);
+    try {
+      await deleteSession(useCloud, s.id);
       toast.success('تم الحذف');
-    }
-  };
-
-  const handleExportAll = () => {
-    const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lab-sessions-backup-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('تم تصدير نسخة احتياطية');
-  };
-
-  const handleImportAll = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const imported = JSON.parse(ev.target.result);
-          if (!Array.isArray(imported)) throw new Error();
-          const next = [...imported, ...sessions];
-          if (saveAll(next)) {
-            setSessions(next);
-            toast.success(`تم استيراد ${imported.length} جلسة`);
-          }
-        } catch {
-          toast.error('ملف غير صالح');
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+      await refresh();
+    } catch { toast.error('فشل الحذف'); }
   };
 
   return (
     <div data-testid="sessions-modal" className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-[#0B132B]/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#111A31] border border-[#3A506B] rounded-lg shadow-2xl w-[640px] max-h-[80vh] p-6 flex flex-col gap-5 overflow-hidden">
+      <div className="relative bg-[#111A31] border border-[#3A506B] rounded-lg shadow-2xl w-[640px] max-h-[85vh] p-6 flex flex-col gap-5 overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded bg-[#00B4D8]/10 border border-[#00B4D8]/30 flex items-center justify-center">
@@ -144,7 +137,20 @@ const SessionsModalContent = ({ onClose, currentComponents, currentWires, onLoad
             </div>
             <div>
               <h3 className="text-[#FFFFFF] text-lg font-bold">إدارة الجلسات المحفوظة</h3>
-              <p className="text-[#8D99AE] text-xs mt-0.5">حفظ، تحميل، وحذف جلسات الطلاب (محفوظة محلياً في المتصفح)</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {useCloud ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
+                    <Cloud size={10} /> SUPABASE
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#FACC15]/15 text-[#FACC15] border border-[#FACC15]/30">
+                    <HardDrive size={10} /> LOCAL
+                  </span>
+                )}
+                <p className="text-[#8D99AE] text-xs">
+                  {useCloud ? 'محفوظة في قاعدة بيانات Supabase (مشتركة بين الأجهزة)' : 'محفوظة محلياً في المتصفح فقط'}
+                </p>
+              </div>
             </div>
           </div>
           <button onClick={onClose} className="text-[#8D99AE] hover:text-[#FFFFFF] transition-colors" data-testid="sessions-modal-close-btn">
@@ -187,10 +193,11 @@ const SessionsModalContent = ({ onClose, currentComponents, currentWires, onLoad
           </div>
           <button
             data-testid="save-session-cloud-btn"
+            disabled={saving}
             onClick={handleSave}
-            className="self-start px-4 py-2 text-sm rounded bg-[#00B4D8] text-white font-medium hover:bg-[#0090AD] transition-colors flex items-center gap-2"
+            className="self-start px-4 py-2 text-sm rounded bg-[#00B4D8] text-white font-medium hover:bg-[#0090AD] disabled:opacity-50 transition-colors flex items-center gap-2"
           >
-            <Save size={14} />
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             حفظ
           </button>
         </div>
@@ -198,27 +205,9 @@ const SessionsModalContent = ({ onClose, currentComponents, currentWires, onLoad
         <div className="flex-1 overflow-y-auto -mx-2 px-2">
           <div className="text-xs text-[#94A3B8] font-medium tracking-wide mb-2 px-1 flex items-center justify-between">
             <span>الجلسات المحفوظة ({sessions.length})</span>
-            <div className="flex items-center gap-1">
-              <button
-                data-testid="sessions-import-btn"
-                onClick={handleImportAll}
-                className="text-[10px] px-2 py-0.5 rounded hover:bg-[#3A506B]/40 text-[#94A3B8] hover:text-[#00B4D8] transition-colors"
-                title="استيراد نسخة احتياطية"
-              >
-                استيراد
-              </button>
-              <button
-                data-testid="sessions-export-btn"
-                onClick={handleExportAll}
-                disabled={sessions.length === 0}
-                className="text-[10px] px-2 py-0.5 rounded hover:bg-[#3A506B]/40 text-[#94A3B8] hover:text-[#00B4D8] disabled:opacity-40 transition-colors"
-                title="تصدير نسخة احتياطية"
-              >
-                تصدير الكل
-              </button>
-            </div>
+            {loading && <Loader2 size={12} className="animate-spin text-[#00B4D8]" />}
           </div>
-          {sessions.length === 0 && (
+          {sessions.length === 0 && !loading && (
             <div className="text-center text-[#8D99AE] text-sm py-8">لا توجد جلسات محفوظة بعد</div>
           )}
           <div className="space-y-2">
@@ -238,7 +227,7 @@ const SessionsModalContent = ({ onClose, currentComponents, currentWires, onLoad
                   </button>
                   <button
                     data-testid={`session-load-${s.id}`}
-                    onClick={() => handleLoad(s)}
+                    onClick={() => handleLoad(s.id)}
                     className="px-3 py-1.5 text-xs rounded bg-[#00B4D8]/10 text-[#00B4D8] border border-[#00B4D8]/30 hover:bg-[#00B4D8]/20 transition-colors flex items-center gap-1"
                   >
                     <FolderOpen size={12} />
@@ -257,9 +246,11 @@ const SessionsModalContent = ({ onClose, currentComponents, currentWires, onLoad
           </div>
         </div>
 
-        <div className="text-[10px] text-[#8D99AE] font-mono text-center">
-          💡 الجلسات تُحفظ محلياً في متصفحك فقط. استخدم تصدير/استيراد لمشاركتها بين الأجهزة.
-        </div>
+        {!useCloud && (
+          <div className="text-[10px] text-[#FACC15] font-mono bg-[#FACC15]/5 border border-[#FACC15]/20 rounded p-2 text-center">
+            💡 لتفعيل المشاركة بين الأجهزة، عدّل ملف <code>config.js</code> وأضف إعدادات Supabase.
+          </div>
+        )}
       </div>
     </div>
   );
